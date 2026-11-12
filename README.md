@@ -58,6 +58,8 @@ Docker is not required on this device. On a machine with Docker Compose installe
 
 Compose starts the services, their isolated SQLite database volumes, RabbitMQ, gateway, and Storefront. API/database paths, broker settings, and JWT parameters are environment-configurable. The Compose file includes dependency health checks. Docker and Docker Compose were not run on this device.
 
+The `Compose smoke test` GitHub Actions workflow runs automatically for pushes and pull requests to `main`, or can be started from the repository's **Actions** tab. It builds and starts the Compose stack on a GitHub-hosted runner, waits for health checks, and tests the RabbitMQ order saga, payment-failure stock compensation, and Payments gateway authorization. Its test-only credentials are generated on the runner and are not project secrets.
+
 ## Port map
 
 | Component | Local URL |
