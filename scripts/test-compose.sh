@@ -13,6 +13,16 @@ JWT_SIGNING_KEY="$(openssl rand -hex 32)"
 SEED_ADMIN_PASSWORD="Test-$(openssl rand -hex 16)-Only"
 RABBITMQ_PASSWORD="$(openssl rand -hex 24)"
 
+cat > .env <<EOF
+JWT_SIGNING_KEY=$JWT_SIGNING_KEY
+JWT_ISSUER=$JWT_ISSUER
+JWT_AUDIENCE=$JWT_AUDIENCE
+SEED_ADMIN_EMAIL=$SEED_ADMIN_EMAIL
+SEED_ADMIN_PASSWORD=$SEED_ADMIN_PASSWORD
+RABBITMQ_USER=$RABBITMQ_USER
+RABBITMQ_PASSWORD=$RABBITMQ_PASSWORD
+EOF
+
 temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
 
@@ -52,16 +62,20 @@ submit_order() {
 wait_for_order() {
   local order_id="$1"
   local order
+  local status
   for _ in $(seq 1 60); do
     order="$(curl --fail --silent --show-error \
       --header "Authorization: Bearer $token" \
       "$gateway/orders/v1/orders/$order_id")"
-    case "$(jq -r '.status' <<< "$order")" in
+    status="$(jq -r '.status' <<< "$order")"
+    case "$status" in
       Confirmed|Cancelled) printf '%s' "$order"; return 0 ;;
     esac
     sleep 1
   done
-  echo "Order $order_id did not reach a terminal status within 60 seconds." >&2
+  echo "Order $order_id remained $status. Last response: $order" >&2
+  echo "Orders and RabbitMQ container logs:" >&2
+  docker compose logs --no-color orders rabbitmq catalog inventory payments >&2 || true
   return 1
 }
 

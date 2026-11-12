@@ -27,4 +27,6 @@ jobs:
 
       - name: Stop Compose stack
         if: always()
-        run: docker compose down --volumes --remove-orphans
+        run: |
+          docker compose down --volumes --remove-orphans
+          rm -f .env
