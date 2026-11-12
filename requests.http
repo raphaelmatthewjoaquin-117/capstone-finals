@@ -1,8 +1,11 @@
 @gateway = http://localhost:5100
 @catalogProduct = 11111111-1111-1111-1111-111111111111
-@token = paste-access-token-here
+@token = paste-customer-access-token-here
+@adminToken = paste-admin-access-token-here
+@orderId = paste-order-id-here
+@correlationId = 33333333-3333-4333-8333-333333333333
 
-### Public catalog
+### Public catalog (no token required)
 GET {{gateway}}/catalog/v1/products
 
 ### Register a Customer
@@ -14,7 +17,7 @@ Content-Type: application/json
   "password": "replace-this-with-a-long-password"
 }
 
-### Log in and copy accessToken into @token below
+### Log in as Customer; copy accessToken into @token
 POST {{gateway}}/identity/v1/login
 Content-Type: application/json
 
@@ -23,9 +26,10 @@ Content-Type: application/json
   "password": "replace-this-with-a-long-password"
 }
 
-### Place successful order
+### Place successful order (copy response id into @orderId)
 POST {{gateway}}/orders/v1/orders
 Authorization: Bearer {{token}}
+X-Correlation-ID: {{correlationId}}
 Content-Type: application/json
 
 {
@@ -34,12 +38,18 @@ Content-Type: application/json
   "simulatePaymentFailure": false
 }
 
-### Development-only: fail the next Catalog product-detail reads once
+### Check order status/history (poll while Compose saga is Pending)
+GET {{gateway}}/orders/v1/orders/{{orderId}}
+Authorization: Bearer {{token}}
+X-Correlation-ID: {{correlationId}}
+
+### Development-only: inject one transient Catalog product-detail failure
 POST {{gateway}}/catalog/v1/chaos/fail-next/1
 
-### Trigger saga compensation (expect 409 with Cancelled history)
+### Trigger saga compensation with simulated payment failure
 POST {{gateway}}/orders/v1/orders
 Authorization: Bearer {{token}}
+X-Correlation-ID: {{correlationId}}
 Content-Type: application/json
 
 {
@@ -53,5 +63,32 @@ POST {{gateway}}/inventory/v1/stock/{{catalogProduct}}/adjust
 Content-Type: application/json
 
 {
-  "delta": 5
+  "delta": 1
+}
+
+### Customer token on Admin-only action (expect 403)
+POST {{gateway}}/inventory/v1/stock/{{catalogProduct}}/adjust
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "delta": 1
+}
+
+### Log in as seeded Admin; use SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD from .env
+POST {{gateway}}/identity/v1/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.test",
+  "password": "replace-with-the-SEED_ADMIN_PASSWORD-from-.env"
+}
+
+### Admin-only action with an Admin token (expect 200)
+POST {{gateway}}/inventory/v1/stock/{{catalogProduct}}/adjust
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "delta": 1
 }
