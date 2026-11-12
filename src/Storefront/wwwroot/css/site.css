@@ -1,0 +1,141 @@
+:root {
+  --ink: #292d29;
+  --muted: #70766f;
+  --paper: #f8f8f6;
+  --line: #e4e6e1;
+  --green: #355d49;
+}
+
+* { box-sizing: border-box; }
+
+html { min-height: 100%; scroll-behavior: smooth; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Segoe UI", Arial, sans-serif;
+  font-size: 15px;
+}
+
+a { color: inherit; }
+
+.site-header { border-bottom: 1px solid var(--line); background: #fff; }
+
+.site-nav, .footer-inner {
+  width: min(1040px, calc(100% - 40px));
+  min-height: 62px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.site-name { font-size: 17px; font-weight: 650; text-decoration: none; }
+.nav-links { display: flex; gap: 24px; }
+.nav-links a, .site-footer a { color: #555d56; font-size: 13px; text-decoration: none; }
+.nav-links a:hover, .site-footer a:hover { color: var(--green); text-decoration: underline; }
+
+.store-shell { width: min(1040px, calc(100% - 40px)); margin: 0 auto; }
+
+.hero { padding: 48px 0 42px; }
+.hero-content { max-width: 560px; }
+.hero h1 { margin: 0; font-size: clamp(32px, 5vw, 46px); font-weight: 600; letter-spacing: -.04em; line-height: 1.15; }
+.hero-copy { margin: 12px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.section-kicker { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.section-heading h2, .panel-heading h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.section-caption, .panel-heading p:last-child { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+.text-button { padding: 6px 0; border: 0; background: transparent; color: var(--green); font-size: 13px; cursor: pointer; }
+.text-button:hover { text-decoration: underline; }
+
+.product-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.product-card { border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.product-info { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 17px; }
+.product-title { margin: 0; font-size: 15px; font-weight: 600; }
+.product-bottom { display: flex; align-items: center; gap: 15px; }
+.product-price { color: #414841; font-size: 14px; }
+.product-add {
+  min-width: 62px;
+  padding: 7px 10px;
+  border: 1px solid #cbd6cd;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--green);
+  font-size: 12px;
+  cursor: pointer;
+}
+.product-add:hover:not(:disabled) { background: #f2f6f2; }
+.product-add:disabled { color: #8d938d; cursor: not-allowed; }
+.empty-products { grid-column: 1 / -1; padding: 20px; border: 1px dashed #d4d8d2; border-radius: 6px; color: var(--muted); text-align: center; }
+
+.purchase-layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; margin: 40px 0; }
+.panel { padding: 22px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.panel-heading { margin-bottom: 18px; }
+.form-label { margin-bottom: 6px; color: #4e554f; font-size: 12px; font-weight: 600; }
+.form-control, .form-select { min-height: 40px; border-color: #daddd8; border-radius: 4px; background-color: #fff; color: var(--ink); font-size: 13px; }
+.form-control:focus, .form-select:focus, .form-check-input:focus { border-color: #74937f; box-shadow: 0 0 0 .18rem rgba(53, 93, 73, .13); }
+.form-check-input:checked { border-color: var(--green); background-color: var(--green); }
+.form-check-label { color: var(--muted); font-size: 12px; }
+
+.button-primary, .button-secondary {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid var(--green);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.button-primary { background: var(--green); color: #fff; }
+.button-primary:hover { background: #294a39; color: #fff; }
+.button-secondary { border-color: #d5dad4; background: #fff; color: #444b45; }
+.button-secondary:hover { background: #f5f6f3; }
+.account-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+
+.status-message { display: flex; align-items: center; gap: 8px; margin: 15px 0 0; color: var(--muted); font-size: 12px; }
+.status-message::before { width: 7px; height: 7px; border-radius: 50%; background: #88948b; content: ""; }
+.status-message.alert-danger { color: #984e42; }
+.status-message.alert-danger::before { background: #c76b58; }
+
+.order-result { margin-top: 15px; padding: 14px; border: 1px solid var(--line); border-radius: 5px; background: #fbfbfa; }
+.order-result:empty { display: none; }
+.order-result p { margin: 0 0 8px; font-size: 13px; }
+.order-result p:first-child { font-weight: 600; }
+.order-result ol { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 12px; line-height: 1.8; }
+
+.admin-panel { margin: 0 0 44px; padding: 17px 20px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.admin-panel summary { color: #4d554e; font-size: 13px; font-weight: 600; cursor: pointer; }
+.admin-content { padding-top: 17px; }
+.admin-note { margin: 0 0 15px; color: var(--muted); font-size: 12px; }
+
+.site-footer { border-top: 1px solid var(--line); background: #fff; }
+.footer-inner { min-height: 58px; color: var(--muted); font-size: 12px; }
+
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #63826d;
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .site-nav, .footer-inner, .store-shell { width: calc(100% - 32px); }
+  .hero { padding: 35px 0 30px; }
+  .purchase-layout { grid-template-columns: 1fr; margin: 30px 0; }
+  .panel { padding: 18px; }
+}
+
+@media (max-width: 420px) {
+  .product-grid { grid-template-columns: 1fr; }
+  .section-heading { align-items: flex-start; }
+  .text-button { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

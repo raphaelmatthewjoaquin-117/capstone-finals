@@ -1,0 +1,270 @@
+@{
+    ViewData["Title"] = "Shop";
+}
+
+<div class="store-shell">
+    <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-content">
+            <p class="section-kicker">Welcome</p>
+            <h1 id="hero-title">Find something you'll love.</h1>
+            <p class="hero-copy">Browse our products and place an order below.</p>
+        </div>
+    </section>
+
+    <section id="collection" aria-labelledby="collection-title">
+        <div class="section-heading">
+            <div>
+                <h2 id="collection-title">Our products</h2>
+                <p class="section-caption">Take a look at what's available.</p>
+            </div>
+            <button id="refresh" class="text-button" type="button">Refresh products</button>
+        </div>
+        <div id="products" class="product-grid" aria-live="polite">
+            <div class="empty-products">Loading products…</div>
+        </div>
+    </section>
+
+    <div class="purchase-layout">
+        <section id="order-section" class="panel" aria-labelledby="order-title">
+            <div class="panel-heading">
+                <h2 id="order-title">Place an order</h2>
+                <p>Choose an item from the collection to get started.</p>
+            </div>
+            <form id="order">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label" for="productId">Your selection</label>
+                        <select class="form-select" id="productId" required><option value="">Choose a product</option></select>
+                    </div>
+                    <div class="col-md-3 col-5">
+                        <label class="form-label" for="quantity">Quantity</label>
+                        <input class="form-control" id="quantity" type="number" value="1" min="1" max="100" required />
+                    </div>
+                    <div class="col-md-3 col-7">
+                        <button class="button-primary w-100" type="submit">Place order <span aria-hidden="true">→</span></button>
+                    </div>
+                </div>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" id="failPayment" type="checkbox" />
+                    <label class="form-check-label" for="failPayment">Demo: simulate a payment failure</label>
+                </div>
+            </form>
+            <div id="orderResult" class="order-result" aria-live="polite"></div>
+        </section>
+
+        <section id="account" class="panel account-panel" aria-labelledby="account-title">
+            <div class="panel-heading">
+                <h2 id="account-title">Account</h2>
+                <p>Sign in to place and manage your orders.</p>
+            </div>
+            <form id="account-form">
+                <div class="mb-3">
+                    <label class="form-label" for="email">Email address</label>
+                    <input class="form-control" id="email" type="email" placeholder="you@example.com" autocomplete="email" required />
+                </div>
+                <div>
+                    <label class="form-label" for="password">Password</label>
+                    <input class="form-control" id="password" type="password" placeholder="At least 10 characters" autocomplete="current-password" required />
+                </div>
+                <div class="account-actions">
+                    <button class="button-primary" type="button" id="login">Log in</button>
+                    <button class="button-secondary" type="button" id="register">Create account</button>
+                    <button class="button-secondary" type="button" id="logout">Sign out</button>
+                </div>
+            </form>
+            <p id="message" role="status" aria-live="polite" class="status-message">Not signed in.</p>
+        </section>
+    </div>
+
+    <details class="admin-panel">
+        <summary>Store administration</summary>
+        <div class="admin-content">
+            <p class="admin-note">Admin account requires <code>SEED_ADMIN_EMAIL</code> and <code>SEED_ADMIN_PASSWORD</code> at Identity startup.</p>
+            <form id="newProduct" class="row g-3 align-items-end mb-3">
+                <div class="col-md-5">
+                    <label class="form-label" for="newName">Product name</label>
+                    <input class="form-control" id="newName" placeholder="Product name" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="newPrice">Price</label>
+                    <input class="form-control" id="newPrice" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+                </div>
+                <div class="col-md-auto"><button class="button-secondary" type="submit">Create product</button></div>
+            </form>
+            <form id="adjustStock" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label" for="stockProductId">Product</label>
+                    <select class="form-select" id="stockProductId" required><option value="">Choose a product</option></select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="stockDelta">Stock change</label>
+                    <input class="form-control" id="stockDelta" type="number" placeholder="e.g. 10 or -1" required />
+                </div>
+                <div class="col-md-auto"><button class="button-secondary" type="submit">Adjust stock</button></div>
+            </form>
+        </div>
+    </details>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const gateway = "http://localhost:5100";
+    const tokenKey = "storefront.jwt";
+    const message = document.getElementById("message");
+    const token = () => sessionStorage.getItem(tokenKey);
+    const headers = () => token() ? { Authorization: `Bearer ${token()}` } : {};
+    const show = (text, error = false) => {
+        message.textContent = text;
+        message.className = `status-message${error ? " alert-danger" : ""}`;
+    };
+    async function requestWithStatus(path, options = {}) {
+        const response = await fetch(`${gateway}${path}`, {
+            ...options,
+            headers: { ...headers(), ...(options.body ? { "Content-Type": "application/json" } : {}), ...options.headers }
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok && !(response.status === 409 && path === "/orders/v1/orders"))
+            throw new Error(body?.detail || body?.title || `${response.status} ${response.statusText}`);
+        return { status: response.status, body };
+    }
+    async function request(path, options = {}) {
+        return (await requestWithStatus(path, options)).body;
+    }
+    document.getElementById("register").onclick = async () => {
+        try {
+            const body = { email: document.getElementById("email").value, password: document.getElementById("password").value };
+            await request("/identity/v1/register", { method: "POST", body: JSON.stringify(body) });
+            show("Account created. You can now log in.");
+        } catch (error) { show(error.message, true); }
+    };
+    document.getElementById("login").onclick = async () => {
+        try {
+            const body = { email: document.getElementById("email").value, password: document.getElementById("password").value };
+            const result = await request("/identity/v1/login", { method: "POST", body: JSON.stringify(body) });
+            sessionStorage.setItem(tokenKey, result.accessToken);
+            show("Logged in.");
+        } catch (error) { show(error.message, true); }
+    };
+    document.getElementById("logout").onclick = () => {
+        sessionStorage.removeItem(tokenKey);
+        show("Logged out.");
+    };
+    async function loadProducts() {
+        try {
+            const products = await request("/catalog/v1/products");
+            const list = document.getElementById("products");
+            const orderSelect = document.getElementById("productId");
+            const stockSelect = document.getElementById("stockProductId");
+            list.replaceChildren();
+            orderSelect.replaceChildren(new Option("Choose a product", ""));
+            stockSelect.replaceChildren(new Option("Choose a product", ""));
+            if (!products.length) {
+                const empty = document.createElement("div");
+                empty.className = "empty-products";
+                empty.textContent = "No products are available right now.";
+                list.append(empty);
+            }
+            for (const product of products) {
+                const card = document.createElement("article");
+                card.className = "product-card";
+                const info = document.createElement("div");
+                info.className = "product-info";
+                const title = document.createElement("h3");
+                title.className = "product-title";
+                title.textContent = product.name;
+                const bottom = document.createElement("div");
+                bottom.className = "product-bottom";
+                const price = document.createElement("span");
+                price.className = "product-price";
+                price.textContent = `$${Number(product.price).toFixed(2)}`;
+                const add = document.createElement("button");
+                add.className = "product-add";
+                add.type = "button";
+                add.setAttribute("aria-label", `Order ${product.name}`);
+                add.textContent = product.active ? "Order" : "Unavailable";
+                add.disabled = !product.active;
+                add.onclick = () => {
+                    orderSelect.value = product.id;
+                    document.getElementById("order-section").scrollIntoView({ behavior: "smooth", block: "center" });
+                };
+                bottom.append(price, add);
+                info.append(title, bottom);
+                card.append(info);
+                list.append(card);
+                if (product.active) orderSelect.add(new Option(`${product.name} ($${Number(product.price).toFixed(2)})`, product.id));
+                stockSelect.add(new Option(product.name, product.id));
+            }
+        } catch (error) { show(error.message, true); }
+    }
+    document.getElementById("refresh").onclick = loadProducts;
+    document.getElementById("order").onsubmit = async event => {
+        event.preventDefault();
+        try {
+            const body = {
+                productId: document.getElementById("productId").value,
+                quantity: Number(document.getElementById("quantity").value),
+                simulatePaymentFailure: document.getElementById("failPayment").checked
+            };
+            const submission = await requestWithStatus("/orders/v1/orders", { method: "POST", body: JSON.stringify(body) });
+            let order = submission.body;
+            if (submission.status === 202) {
+                for (let attempt = 0; attempt < 20 && !["Confirmed", "Cancelled"].includes(order.status); attempt++) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    order = await request(`/orders/v1/orders/${order.id}`);
+                }
+            }
+            displayOrder(order);
+        } catch (error) { show(error.message, true); }
+    };
+    function displayOrder(order) {
+        const result = document.getElementById("orderResult");
+        result.replaceChildren();
+        const heading = document.createElement("p");
+        heading.textContent = `Order ${order.id}: ${order.status} — total $${Number(order.total).toFixed(2)}`;
+        result.append(heading);
+        if (order.status === "Pending" || order.status === "StockReserved" || order.status === "PaymentCharged") {
+            const pending = document.createElement("p");
+            pending.textContent = "The order is still processing.";
+            result.append(pending);
+            const refresh = document.createElement("button");
+            refresh.type = "button";
+            refresh.className = "btn btn-outline-primary";
+            refresh.textContent = "Check order status";
+            refresh.onclick = async () => {
+                try {
+                    displayOrder(await request(`/orders/v1/orders/${order.id}`));
+                } catch (error) { show(error.message, true); }
+            };
+            result.append(refresh);
+        }
+        const list = document.createElement("ol");
+        for (const item of order.history || []) {
+            const row = document.createElement("li");
+            row.textContent = `${item.status}: ${item.detail || ""} (${new Date(item.at).toLocaleString()})`;
+            list.append(row);
+        }
+        result.append(list);
+    }
+    document.getElementById("newProduct").onsubmit = async event => {
+        event.preventDefault();
+        try {
+            await request("/catalog/v1/products", { method: "POST", body: JSON.stringify({
+                name: document.getElementById("newName").value, price: Number(document.getElementById("newPrice").value)
+            }) });
+            await loadProducts();
+            show("Product created.");
+        } catch (error) { show(error.message, true); }
+    };
+    document.getElementById("adjustStock").onsubmit = async event => {
+        event.preventDefault();
+        try {
+            const id = document.getElementById("stockProductId").value;
+            const result = await request(`/inventory/v1/stock/${id}/adjust`, { method: "POST", body: JSON.stringify({ delta: Number(document.getElementById("stockDelta").value) }) });
+            show(`Stock updated: on hand ${result.onHand}, reserved ${result.reserved}.`);
+        } catch (error) { show(error.message, true); }
+    };
+    loadProducts();
+})();
+</script>
+}

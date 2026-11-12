@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: Payments API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5104/api/v1
+paths:
+  /charges:
+    post:
+      operationId: chargePayment
+      summary: Charge an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChargeRequest"
+      responses:
+        "200":
+          description: Charge result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResult"
+        "400":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /refunds/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: refundPayment
+      summary: Refund an order's successful charge
+      responses:
+        "200":
+          description: Charge refunded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefundResult"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+components:
+  schemas:
+    ChargeRequest:
+      type: object
+      required: [orderId, amount, simulateFailure]
+      properties:
+        orderId: { type: string, format: uuid }
+        amount: { type: number, format: decimal, minimum: 0 }
+        simulateFailure: { type: boolean }
+    PaymentResult:
+      type: object
+      required: [orderId, succeeded]
+      properties:
+        orderId: { type: string, format: uuid }
+        succeeded: { type: boolean }
+        failureReason: { type: string, nullable: true }
+    RefundResult:
+      type: object
+      required: [refunded]
+      properties:
+        refunded: { type: boolean }
+    PaymentsProblemDetails:
+      type: object
+      properties:
+        type: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        status: { type: integer, nullable: true }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    Problem:
+      description: Problem Details error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/PaymentsProblemDetails"

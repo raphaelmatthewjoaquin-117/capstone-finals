@@ -1,0 +1,135 @@
+openapi: 3.0.3
+info:
+  title: Catalog API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5101/api/v1
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      summary: List active products
+      responses:
+        "200":
+          description: Active products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProductDto"
+        default:
+          $ref: "#/components/responses/Problem"
+    post:
+      operationId: createProduct
+      summary: Create a product (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /products/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getProduct
+      summary: Get an active product
+      responses:
+        "200":
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+    put:
+      operationId: updateProduct
+      summary: Update a product (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "200":
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDto"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ProductDto:
+      type: object
+      required: [id, name, price, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        price: { type: number, format: decimal }
+        active: { type: boolean }
+    CreateProductRequest:
+      type: object
+      required: [name, price]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        price: { type: number, format: decimal, exclusiveMinimum: 0 }
+    CatalogProblemDetails:
+      type: object
+      properties:
+        type: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        status: { type: integer, nullable: true }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    Problem:
+      description: Problem Details error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/CatalogProblemDetails"

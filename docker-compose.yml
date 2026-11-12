@@ -1,0 +1,134 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER in your environment}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in your environment}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  catalog:
+    build:
+      context: .
+      dockerfile: src/Catalog.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      CATALOG_DB: /data/catalog.db
+    volumes:
+      - catalog-data:/data
+
+  inventory:
+    build:
+      context: .
+      dockerfile: src/Inventory.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      INVENTORY_DB: /data/inventory.db
+    volumes:
+      - inventory-data:/data
+
+  payments:
+    build:
+      context: .
+      dockerfile: src/Payments.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      PAYMENTS_DB: /data/payments.db
+    volumes:
+      - payments-data:/data
+
+  identity:
+    build:
+      context: .
+      dockerfile: src/Identity.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      IDENTITY_DB: /data/identity.db
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in your environment}
+      JWT_ISSUER: ${JWT_ISSUER:-store-platform}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-storefront}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?Set SEED_ADMIN_EMAIL in your environment}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD in your environment}
+    volumes:
+      - identity-data:/data
+
+  orders:
+    build:
+      context: .
+      dockerfile: src/Orders.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ORDERS_DB: /data/orders.db
+      CATALOG_URL: http://catalog:8080
+      INVENTORY_URL: http://inventory:8080
+      PAYMENTS_URL: http://payments:8080
+      Messaging__Enabled: "true"
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER in your environment}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in your environment}
+    depends_on:
+      catalog:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+      payments:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - orders-data:/data
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/Gateway/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in your environment}
+      JWT_ISSUER: ${JWT_ISSUER:-store-platform}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-storefront}
+    ports:
+      - "5100:8080"
+    depends_on:
+      identity:
+        condition: service_healthy
+      catalog:
+        condition: service_healthy
+      inventory:
+        condition: service_healthy
+      orders:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/catalog/v1/products"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  storefront:
+    build:
+      context: .
+      dockerfile: src/Storefront/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    ports:
+      - "5200:8080"
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+volumes:
+  catalog-data:
+  inventory-data:
+  orders-data:
+  payments-data:
+  identity-data:
+  rabbitmq-data:

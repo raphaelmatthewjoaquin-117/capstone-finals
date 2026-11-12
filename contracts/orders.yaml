@@ -1,0 +1,118 @@
+openapi: 3.0.3
+info:
+  title: Orders API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5103/api/v1
+paths:
+  /orders:
+    post:
+      operationId: placeOrder
+      summary: Place an order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaceOrderRequest"
+      responses:
+        "202":
+          description: Order accepted for asynchronous processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDto"
+        "201":
+          description: Order processed synchronously
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDto"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "409":
+          description: Order cancelled and compensation completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDto"
+        default:
+          $ref: "#/components/responses/Problem"
+  /orders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getOrder
+      summary: Get an order and status history
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Order with status history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderDto"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    PlaceOrderRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1, maximum: 100 }
+        simulatePaymentFailure: { type: boolean, default: false }
+    OrderDto:
+      type: object
+      required: [id, status, total, history]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [Pending, StockReserved, PaymentCharged, Confirmed, Cancelled] }
+        total: { type: number, format: decimal }
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderStatusDto"
+    OrderStatusDto:
+      type: object
+      required: [status, at]
+      properties:
+        status: { type: string }
+        at: { type: string, format: date-time }
+        detail: { type: string, nullable: true }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        status: { type: integer, nullable: true }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    Problem:
+      description: Problem Details error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"

@@ -1,0 +1,57 @@
+@gateway = http://localhost:5100
+@catalogProduct = 11111111-1111-1111-1111-111111111111
+@token = paste-access-token-here
+
+### Public catalog
+GET {{gateway}}/catalog/v1/products
+
+### Register a Customer
+POST {{gateway}}/identity/v1/register
+Content-Type: application/json
+
+{
+  "email": "customer@example.test",
+  "password": "replace-this-with-a-long-password"
+}
+
+### Log in and copy accessToken into @token below
+POST {{gateway}}/identity/v1/login
+Content-Type: application/json
+
+{
+  "email": "customer@example.test",
+  "password": "replace-this-with-a-long-password"
+}
+
+### Place successful order
+POST {{gateway}}/orders/v1/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productId": "{{catalogProduct}}",
+  "quantity": 1,
+  "simulatePaymentFailure": false
+}
+
+### Development-only: fail the next Catalog product-detail reads once
+POST {{gateway}}/catalog/v1/chaos/fail-next/1
+
+### Trigger saga compensation (expect 409 with Cancelled history)
+POST {{gateway}}/orders/v1/orders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "productId": "{{catalogProduct}}",
+  "quantity": 1,
+  "simulatePaymentFailure": true
+}
+
+### Anonymous Admin action (expect 401)
+POST {{gateway}}/inventory/v1/stock/{{catalogProduct}}/adjust
+Content-Type: application/json
+
+{
+  "delta": 5
+}

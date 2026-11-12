@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+.env
+data/
+data-before-migrations-*/
+logs/
+.local-processes.json
+*.db
+*.db-shm
+*.db-wal
+Evidence/*
+!Evidence/README.md
+!Evidence/.gitkeep

@@ -1,0 +1,180 @@
+openapi: 3.0.3
+info:
+  title: Inventory API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5102/api/v1
+paths:
+  /stock/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getStock
+      summary: Get stock for a product
+      responses:
+        "200":
+          description: Stock and reservations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockDto"
+        "404":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /stock/{productId}/adjust:
+    parameters:
+      - name: productId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: adjustStock
+      summary: Adjust stock (Admin only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustStockRequest"
+      responses:
+        "200":
+          description: Stock adjusted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockDto"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /reservations:
+    post:
+      operationId: reserveStock
+      summary: Reserve stock for an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReserveStockRequest"
+      responses:
+        "200":
+          description: Reservation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResult"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /reservations/{orderId}/release:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: releaseStock
+      summary: Release an order's stock reservation
+      responses:
+        "200":
+          description: Reservation released or already released
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResult"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+  /reservations/{orderId}/commit:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      operationId: commitStock
+      summary: Commit an order's stock reservation
+      responses:
+        "200":
+          description: Reservation committed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReservationResult"
+        "404":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+        default:
+          $ref: "#/components/responses/Problem"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    StockDto:
+      type: object
+      required: [productId, onHand, reserved]
+      properties:
+        productId: { type: string, format: uuid }
+        onHand: { type: integer, minimum: 0 }
+        reserved: { type: integer, minimum: 0 }
+    AdjustStockRequest:
+      type: object
+      required: [delta]
+      properties:
+        delta: { type: integer }
+    ReserveStockRequest:
+      type: object
+      required: [orderId, productId, quantity]
+      properties:
+        orderId: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        quantity: { type: integer, minimum: 1, maximum: 100 }
+    ReservationResult:
+      type: object
+      properties:
+        reserved: { type: boolean }
+        released: { type: boolean }
+        committed: { type: boolean }
+    InventoryProblemDetails:
+      type: object
+      properties:
+        type: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        status: { type: integer, nullable: true }
+        detail: { type: string, nullable: true }
+        instance: { type: string, nullable: true }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    Problem:
+      description: Problem Details error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/InventoryProblemDetails"
