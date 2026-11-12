@@ -30,7 +30,7 @@ sealed class OrdersOutboxDispatcher(
             {
                 try
                 {
-                    await publisher.PublishAsync(Deserialize(message), stoppingToken);
+                    await PublishAsync(message, stoppingToken);
                     message.PublishedAt = DateTimeOffset.UtcNow;
                     await db.SaveChangesAsync(stoppingToken);
                 }
@@ -45,23 +45,24 @@ sealed class OrdersOutboxDispatcher(
         }
     }
 
-    private static IIntegrationEvent Deserialize(OutboxMessage message) => message.EventType switch
-    {
-        nameof(OrderPlaced) => JsonSerializer.Deserialize<OrderPlaced>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        nameof(StockReserved) => JsonSerializer.Deserialize<StockReserved>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        nameof(StockReleaseRequested) => JsonSerializer.Deserialize<StockReleaseRequested>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        nameof(PaymentCharged) => JsonSerializer.Deserialize<PaymentCharged>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        nameof(PaymentFailed) => JsonSerializer.Deserialize<PaymentFailed>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        nameof(OrderConfirmed) => JsonSerializer.Deserialize<OrderConfirmed>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        nameof(OrderCancelled) => JsonSerializer.Deserialize<OrderCancelled>(message.Payload)
-            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload."),
-        _ => throw new InvalidOperationException($"Unsupported outbox event type '{message.EventType}'.")
-    };
+    private Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken) =>
+        message.EventType switch
+        {
+            nameof(OrderPlaced) => PublishAsync<OrderPlaced>(message, cancellationToken),
+            nameof(StockReserved) => PublishAsync<StockReserved>(message, cancellationToken),
+            nameof(StockReleaseRequested) => PublishAsync<StockReleaseRequested>(message, cancellationToken),
+            nameof(PaymentCharged) => PublishAsync<PaymentCharged>(message, cancellationToken),
+            nameof(PaymentFailed) => PublishAsync<PaymentFailed>(message, cancellationToken),
+            nameof(OrderConfirmed) => PublishAsync<OrderConfirmed>(message, cancellationToken),
+            nameof(OrderCancelled) => PublishAsync<OrderCancelled>(message, cancellationToken),
+            _ => throw new InvalidOperationException($"Unsupported outbox event type '{message.EventType}'.")
+        };
 
+    private async Task PublishAsync<TEvent>(OutboxMessage message, CancellationToken cancellationToken)
+        where TEvent : class, IIntegrationEvent
+    {
+        var integrationEvent = JsonSerializer.Deserialize<TEvent>(message.Payload)
+            ?? throw new InvalidOperationException($"Outbox event {message.EventId} has an empty payload.");
+        await publisher.PublishAsync(integrationEvent, cancellationToken);
+    }
 }
